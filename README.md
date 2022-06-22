@@ -1,6 +1,6 @@
-# psycModel  <a href='https://jasonmoy28.github.io/psycModel/'><img src='man/figures/logo.png' align="right" height="220px" /></a>
+# psycPlot
 
-## Integrated Toolkit for Psychological Analysis and Modeling in R
+## Easy-to-use package for publication-ready plots.
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/jasonmoy28/psycPlot/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jasonmoy28/psycPlot/actions/workflows/R-CMD-check.yaml)
