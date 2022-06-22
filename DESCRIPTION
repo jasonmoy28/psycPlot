@@ -21,3 +21,5 @@ Imports:
     stringr,
     tibble
 RoxygenNote: 7.2.0
+Suggests: 
+    covr
