@@ -3,8 +3,8 @@
 ## Integrated Toolkit for Psychological Analysis and Modeling in R
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/jasonmoy28/psycPlot/workflows/R-CMD-check/badge.svg)](https://github.com/jasonmoy28/psycPlot/actions)
 [![Codecov test coverage](https://codecov.io/gh/jasonmoy28/psycPlot/branch/master/graph/badge.svg)](https://codecov.io/gh/jasonmoy28/psycPlot?branch=master)
+[![R-CMD-check](https://github.com/jasonmoy28/psycPlot/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jasonmoy28/psycPlot/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 # Installation
