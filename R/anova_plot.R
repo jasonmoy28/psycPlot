@@ -18,7 +18,7 @@ anova_plot <- function(model,
 
   response_var = dplyr::enquo(response_var_name)
 
-  model_data = insight::get_data(x = model)
+  data = insight::get_data(x = model)
 
   interaction_term = get_interaction_term(model)
 
@@ -26,12 +26,12 @@ anova_plot <- function(model,
   if (is.null(interaction_term)) {
     predictor = dplyr::enquo(predictor)
 
-    mean = model_data %>%
+    mean = data %>%
       dplyr::group_by(!!predictor) %>%
       dplyr::summarise(dplyr::across(!!response_var, ~ mean(., na.rm = T))) %>%
       dplyr::rename(mean = !!response_var)
 
-    se = model_data %>%
+    se = data %>%
       dplyr::group_by(!!predictor) %>%
       dplyr::summarise(dplyr::across(
         !!response_var,
@@ -43,7 +43,7 @@ anova_plot <- function(model,
       dplyr::rename(predict_var1 = !!predictor)
 
     # label name
-    predictor_name = model_data %>% dplyr::select(!!predictor) %>% colnames()
+    predictor_name = data %>% dplyr::select(!!predictor) %>% colnames()
     label_name = label_name(
       graph_label_name = graph_label_name,
       response_var_name = response_var_name,
@@ -62,8 +62,8 @@ anova_plot <- function(model,
         position = ggplot2::position_dodge(0.9)
       ) +
       ggplot2::geom_errorbar(ggplot2::aes(ymin = mean - se, ymax = mean + se),
-                    position = ggplot2::position_dodge(0.9),
-                    width = 0.1) +
+                             position = ggplot2::position_dodge(0.9),
+                             width = 0.1) +
       ggplot2::labs(y = label_name[1],
                     x = label_name[2])
 
@@ -87,27 +87,78 @@ anova_plot <- function(model,
         predict_vars = c(predict_vars, predict_var3)
       }
     }
-
     predict_vars = ggplot2::enquos(predict_vars)
 
-    mean = model_data %>%
-      dplyr::group_by(dplyr::across(!!!predict_vars)) %>%
-      dplyr::summarise(dplyr::across(!!response_var, ~ mean(., na.rm = T))) %>%
-      dplyr::rename(mean = !!response_var)
-
-    se = model_data %>%
-      dplyr::group_by(dplyr::across(!!!predict_vars)) %>%
-      dplyr::summarise(dplyr::across(
-        !!response_var,
-        ~ stats::sd(., na.rm = TRUE) / sqrt(dplyr::n())
-      )) %>%
-      dplyr::rename(se = !!response_var)
-
-    # two-way interaction plot
+    ##################################### Two-way Interaction #####################################
     if (length(get_interaction_term(model)) == 2) {
-      plot_df =  mean %>% dplyr::full_join(se) %>%
-        dplyr::rename(predict_var1 = !!dplyr::enquo(predict_var1)) %>%
-        dplyr::rename(predict_var2 = !!dplyr::enquo(predict_var2))
+      data_type = data %>% dplyr::summarise(dplyr::across(!!!predict_vars, class)) %>% tidyr::pivot_longer(dplyr::everything(),names_to = 'name',values_to = 'value')
+
+      if (any(data_type == 'numeric')) {
+        num_var_name = data_type %>% dplyr::filter(value == 'numeric') %>% dplyr::select(name) %>% dplyr::pull()
+        cat_var_name = data_type %>% filter(value == 'factor') %>% dplyr::select(name) %>% dplyr::pull()
+
+        mean_df = get_predict_df(data = data)$mean_df
+        upper_df = get_predict_df(data = data)$upper_df
+        lower_df = get_predict_df(data = data)$lower_df
+        plot_df = data.frame()
+        for (level in levels((data[[cat_var_name]]))) {
+          upper_new_data = mean_df
+          upper_new_data[num_var_name] = upper_df[num_var_name]
+          upper_new_data[cat_var_name] = level
+
+          lower_new_data = mean_df
+          lower_new_data[cat_var_name] = level
+          lower_new_data[num_var_name] = lower_df[num_var_name]
+          if (class(model) == "lm") {
+            upper_predicted = predict(model, newdata = upper_new_data, se.fit = T)
+            lower_predicted = predict(model, newdata = lower_new_data, se.fit = T)
+
+            plot_df = rbind(plot_df, data.frame(cat_var_name = level,
+                                                num_var_name = 'high',
+                                                mean = upper_predicted$fit,
+                                                se = upper_predicted$se.fit))
+
+            plot_df = rbind(plot_df, data.frame(cat_var_name = level,
+                                                num_var_name = 'low',
+                                                mean = lower_predicted$fit,
+                                                se = lower_predicted$se.fit))
+
+          } else if(class(model) == 'lmerModLmerTest' | class(model) == "lmerMod"){
+            upper_predicted = predict(model, newdata = upper_new_data)
+            lower_predicted = predict(model, newdata = lower_new_data)
+
+            plot_df = rbind(plot_df, data.frame(cat_var_name = level,
+                                                num_var_name = 'high',
+                                                mean = upper_predicted,
+                                                se = NA_real_))
+
+            plot_df = rbind(plot_df, data.frame(cat_var_name = level,
+                                                num_var_name = 'low',
+                                                mean = lower_predicted,
+                                                se = NA_real_))
+          }
+        }
+        names(plot_df)[1] = 'predict_var1'
+        names(plot_df)[2] = 'predict_var2'
+      } else{
+        mean = data %>%
+          dplyr::group_by(dplyr::across(!!!predict_vars)) %>%
+          dplyr::summarise(dplyr::across(!!response_var, ~ mean(., na.rm = T))) %>%
+          dplyr::rename(mean = !!response_var)
+
+        se = data %>%
+          dplyr::group_by(dplyr::across(!!!predict_vars)) %>%
+          dplyr::summarise(dplyr::across(
+            !!response_var,
+            ~ stats::sd(., na.rm = TRUE) / sqrt(dplyr::n())
+          )) %>%
+          dplyr::rename(se = !!response_var)
+
+        plot_df =  mean %>%
+          dplyr::full_join(se) %>%
+          dplyr::rename(predict_var1 = !!dplyr::enquo(predict_var1)) %>%
+          dplyr::rename(predict_var2 = !!dplyr::enquo(predict_var2))
+      }
 
       label_name = label_name(
         graph_label_name = graph_label_name,
@@ -128,16 +179,19 @@ anova_plot <- function(model,
           stat = 'identity',
           width = 0.5,
           color = 'black',
-          position = ggplot2::position_dodge(0.9)
-        ) +
-        ggplot2::geom_errorbar(ggplot2::aes(ymin = mean - se, ymax = mean + se),
-                      position = ggplot2::position_dodge(0.9),
-                      width = 0.1) +
+          position = ggplot2::position_dodge(0.9)) +
         ggplot2::labs(y = label_name[1],
                       x = label_name[2],
                       fill = label_name[3])
 
-      # three-way interaction plot
+      if (all(!is.na(plot_df$se))) {
+        main_plot = main_plot +
+          ggplot2::geom_errorbar(ggplot2::aes(ymin = mean - se, ymax = mean + se),
+                                 position = ggplot2::position_dodge(0.9),
+                                 width = 0.1)
+
+      }
+      ##################################### Three-way Interaction #####################################
     } else if (length(get_interaction_term(model)) == 3) {
       plot_df =  mean %>% dplyr::full_join(se) %>%
         dplyr::rename(predict_var1 = !!dplyr::enquo(predict_var1)) %>%
@@ -166,8 +220,8 @@ anova_plot <- function(model,
           position = ggplot2::position_dodge(0.9)
         ) +
         ggplot2::geom_errorbar(ggplot2::aes(ymin = mean - se, ymax = mean + se),
-                      position = ggplot2::position_dodge(0.9),
-                      width = 0.1) +
+                               position = ggplot2::position_dodge(0.9),
+                               width = 0.1) +
         ggplot2::labs(y = label_name[1],
                       x = label_name[2],
                       fill = label_name[3]) +
@@ -175,7 +229,7 @@ anova_plot <- function(model,
     }
   }
 
-  # add aesthetics
+  ##################################### Touching up #####################################
   final_plot = main_plot +
     ggplot2::scale_fill_brewer() +
     ggplot2::theme_minimal() +
