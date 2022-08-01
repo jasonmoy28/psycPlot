@@ -72,15 +72,10 @@ three_way_interaction_plot <- function(model,
     }
   }
 
-  data <- data_check(data)
-  mean_df <- dplyr::summarise_all(data, mean, na.rm = TRUE)
-  upper_df <- dplyr::summarise_all(data, .funs = function(.) {
-    mean(., na.rm = TRUE) + 1 * stats::sd(., na.rm = TRUE)
-  })
 
-  lower_df <- dplyr::summarise_all(data, .funs = function(.) {
-    mean(., na.rm = TRUE) - 1 * stats::sd(., na.rm = TRUE)
-  })
+  mean_df = get_predict_df(data = model_data)$mean_df
+  upper_df = get_predict_df(data = model_data)$upper_df
+  lower_df = get_predict_df(data = model_data)$lower_df
 
   # Specify the categorical variable upper and lower bound directly
   if (!is.null(cateogrical_var)) {
@@ -167,38 +162,16 @@ three_way_interaction_plot <- function(model,
     lower_lower_lower_predicted_value <- stats::predict(model, newdata = lower_lower_lower_df)
   }
 
-  # Get the correct label for the plot
-  if (!is.null(graph_label_name)) {
-    # If a vector of string is passed as argument, slice the vector
-    if (class(graph_label_name) == "character") {
-      response_var_plot_label <- graph_label_name[1]
-      predict_var1_plot_label <- graph_label_name[2]
-      predict_var2_plot_label <- graph_label_name[3]
-      predict_var3_plot_label <- graph_label_name[4]
-      # if a function of switch_case is passed as an argument, use the function
-    } else if (class(graph_label_name) == "function") {
-      response_var_plot_label <- graph_label_name(response_var)
-      predict_var1_plot_label <- graph_label_name(predict_var1)
-      predict_var2_plot_label <- graph_label_name(predict_var2)
-      predict_var3_plot_label <- graph_label_name(predict_var3)
+  label_name = label_name(
+    graph_label_name = graph_label_name,
+    response_var_name = response_var,
+    predict_var1_name = predict_var1,
+    predict_var2_name = predict_var2,
+    predict_var3_name = predict_var3
+  )
 
-      # All other case use the original label
-    } else {
-      response_var_plot_label <- response_var
-      predict_var1_plot_label <- predict_var1
-      predict_var2_plot_label <- predict_var2
-      predict_var3_plot_label <- predict_var3
-    }
-    # All other case use the original label
-  } else {
-    response_var_plot_label <- response_var
-    predict_var1_plot_label <- predict_var1
-    predict_var2_plot_label <- predict_var2
-    predict_var3_plot_label <- predict_var3
-  }
-
-  high <- stringr::str_c("High", " ", predict_var3_plot_label)
-  low <- stringr::str_c("Low", " ", predict_var3_plot_label)
+  high <- stringr::str_c("High", " ", label_name[4])
+  low <- stringr::str_c("Low", " ", label_name[4])
 
   final_df <- data.frame(
     value = c(
@@ -228,9 +201,9 @@ three_way_interaction_plot <- function(model,
       ggplot2::geom_point() +
       ggplot2::geom_line(ggplot2::aes(group = .data$var2_category)) +
       ggplot2::labs(
-        y = response_var_plot_label,
-        x = predict_var1_plot_label,
-        color = predict_var2_plot_label
+        y = label_name[1],
+        x = label_name[2],
+        color = label_name[3]
       ) +
       ggplot2::facet_wrap(~var3_category) +
       ggplot2::theme_minimal() +
@@ -245,9 +218,9 @@ three_way_interaction_plot <- function(model,
       ggplot2::geom_point() +
       ggplot2::geom_line(ggplot2::aes(linetype = .data$var2_category)) +
       ggplot2::labs(
-        y = response_var_plot_label,
-        x = predict_var1_plot_label,
-        linetype = predict_var2_plot_label
+        y = label_name[1],
+        x = label_name[2],
+        linetype = label_name[3]
       ) +
       ggplot2::facet_wrap(~var3_category) +
       ggplot2::theme_minimal() +

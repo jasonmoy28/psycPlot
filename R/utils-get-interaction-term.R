@@ -3,7 +3,7 @@
 #' @param model model
 #'
 #' @return a list with predict vars names
-#'
+#' @export
 
 get_interaction_term = function(model){
   # get interaction term
