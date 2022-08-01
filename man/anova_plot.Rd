@@ -11,7 +11,7 @@ anova_plot(model, predictor = NULL, graph_label_name = NULL)
 
 \item{predictor}{predictor variable (must specified for non-interaction plot)}
 
-\item{graph_label_name}{graph label name}
+\item{graph_label_name}{vector or function. Vector should be passed in the form of `c(response_var, predict_var1, predict_var2, ...)`. Function should be passed as a switch function that return the label based on the name passed (e.g., a switch function)}
 }
 \value{
 plot object
