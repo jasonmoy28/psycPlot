@@ -8,7 +8,6 @@ two_way_interaction_plot(
   model,
   data = NULL,
   graph_label_name = NULL,
-  cateogrical_var = NULL,
   y_lim = NULL,
   plot_color = FALSE
 )
@@ -19,8 +18,6 @@ two_way_interaction_plot(
 \item{data}{data frame. If the function is unable to extract data frame from the object, then you may need to pass it directly}
 
 \item{graph_label_name}{vector of length 3 or function. Vector should be passed in the form of `c(response_var, predict_var1, predict_var2)`. Function should be passed as a switch function that return the label based on the name passed (e.g., a switch function)}
-
-\item{cateogrical_var}{list. Specify the upper bound and lower bound directly instead of using ± 1 SD from the mean. Passed in the form of `list(var_name1 = c(upper_bound1, lower_bound1),var_name2 = c(upper_bound2, lower_bound2))`}
 
 \item{y_lim}{the plot's upper and lower limit for the y-axis. Length of 2. Example: `c(lower_limit, upper_limit)`}
 

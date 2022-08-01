@@ -8,7 +8,6 @@
 #' @param model object from `lm`, `nlme`, `lme4`, or `lmerTest`
 #' @param data data frame. If the function is unable to extract data frame from the object, then you may need to pass it directly
 #' @param graph_label_name vector of length 3 or function. Vector should be passed in the form of `c(response_var, predict_var1, predict_var2)`. Function should be passed as a switch function that return the label based on the name passed (e.g., a switch function)
-#' @param cateogrical_var list. Specify the upper bound and lower bound directly instead of using ± 1 SD from the mean. Passed in the form of `list(var_name1 = c(upper_bound1, lower_bound1),var_name2 = c(upper_bound2, lower_bound2))`
 #' @param y_lim the plot's upper and lower limit for the y-axis. Length of 2. Example: `c(lower_limit, upper_limit)`
 #' @param plot_color default if `FALSE`. Set to `TRUE` if you want to plot in color
 #'
@@ -25,11 +24,10 @@
 two_way_interaction_plot <- function(model,
                                      data = NULL,
                                      graph_label_name = NULL,
-                                     cateogrical_var = NULL,
                                      y_lim = NULL,
                                      plot_color = FALSE) {
   model_data <- NULL
-  if (any(class(model) %in% c("lmerMod", "lmerModLmerTest", "lm", "lme"))) {
+  if (inherits(model,'lmerMod') | inherits(model,'lme') | inherits(model,'lm')) {
     model_data <- insight::get_data(model)
     predict_var <- model %>%
       insight::find_predictors() %>%
@@ -54,7 +52,7 @@ two_way_interaction_plot <- function(model,
       .$conditional
 
     interaction_term <- interaction_plot_check(interaction_term)
-    warning("Only models from lm, nlme, lme4, and lmerTest are ")
+    warning("Only models from lm, nlme, lme4 are acceptable")
   }
 
   # get variable from model
@@ -81,14 +79,14 @@ two_way_interaction_plot <- function(model,
   upper_df = get_predict_df(data = model_data)$upper_df
   lower_df = get_predict_df(data = model_data)$lower_df
 
-  # Specify the categorical variable upper and lower bound directly
+  # Handling categorical predictors with 2 levels
   predict_vars = c(predict_var1,predict_var2)
   data_type = data %>%
     dplyr::summarise(dplyr::across(!!!enquos(predict_vars), class)) %>%
     tidyr::pivot_longer(dplyr::everything(),names_to = 'name',values_to = 'value')
 
   if (any(data_type == 'factor')) {
-    cateogrical_var = data_type %>% filter(value == 'factor') %>% dplyr::select(name) %>% dplyr::pull()
+    cateogrical_var = data_type %>% dplyr::filter(.data$value == 'factor') %>% dplyr::select(name) %>% dplyr::pull()
     for (name in cateogrical_var) {
       if (length(levels((data[[name]]))) > 2) {
         stop('Error: Categorical variable must only have 2 levels')
@@ -98,15 +96,18 @@ two_way_interaction_plot <- function(model,
     }
     if (cateogrical_var %in% predict_var1) {
       var1_category = c(levels((data[[name]]))[1],levels((data[[name]]))[1],levels((data[[name]]))[2],levels((data[[name]]))[2])
-    } else{
-      var1_category = factor(c("High", "High", "Low", "Low"), levels = c("Low", "High"))
     }
 
     if(cateogrical_var %in% predict_var2){
       var2_category = c(levels((data[[name]]))[1],levels((data[[name]]))[2],levels((data[[name]]))[1],levels((data[[name]]))[2])
-    } else{
-      var2_category = c("High", "Low", "High", "Low")
     }
+  }
+
+  if (!exists('var1_category')) {
+    var1_category = factor(c("High", "High", "Low", "Low"), levels = c("Low", "High"))
+  }
+  if (!exists('var2_category')) {
+    var2_category = c("High", "Low", "High", "Low")
   }
 
   # Update values in the new_data_df to the values in predicted_df & get the predicted value
@@ -126,7 +127,7 @@ two_way_interaction_plot <- function(model,
   lower_lower_df[predict_var1] <- lower_df[predict_var1]
   lower_lower_df[predict_var2] <- lower_df[predict_var2]
 
-  if (class(model) == "lme") {
+  if (inherits(model,'lme')) {
     upper_upper_predicted_value <-
       stats::predict(model, newdata = upper_upper_df, level = 0)
     upper_lower_predicted_value <-
@@ -135,8 +136,7 @@ two_way_interaction_plot <- function(model,
       stats::predict(model, newdata = lower_upper_df, level = 0)
     lower_lower_predicted_value <-
       stats::predict(model, newdata = lower_lower_df, level = 0)
-  } else if (class(model) == "lmerModLmerTest" |
-             class(model) == "glmerMod" | class(model) == "lmerMod") {
+  } else if (inherits(model,'lmerMod')) {
     upper_upper_predicted_value <-
       stats::predict(model, newdata = upper_upper_df, allow.new.levels = TRUE)
     upper_lower_predicted_value <-
@@ -145,7 +145,7 @@ two_way_interaction_plot <- function(model,
       stats::predict(model, newdata = lower_upper_df, allow.new.levels = TRUE)
     lower_lower_predicted_value <-
       stats::predict(model, newdata = lower_lower_df, allow.new.levels = TRUE)
-  } else if (class(model) == "lm") {
+  } else if (inherits(model,'lm')) {
     upper_upper_predicted_value <-
       stats::predict(model, newdata = upper_upper_df)
     upper_lower_predicted_value <-
