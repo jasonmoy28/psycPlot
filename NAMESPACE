@@ -2,6 +2,11 @@
 
 export("%>%")
 export(anova_plot)
+export(data_check)
+export(get_interaction_term)
+export(get_predict_df)
+export(interaction_plot_check)
+export(label_name)
 export(polynomial_regression_plot)
 export(three_way_interaction_plot)
 export(two_way_interaction_plot)

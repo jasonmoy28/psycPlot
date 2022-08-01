@@ -41,7 +41,8 @@ polynomial_regression_plot <- function(model,
     for (i in seq(min(model_data[[predictor]]), max(model_data[[predictor]]), stats::sd(model_data[[predictor]]/20))) {
       mean_df[predictor] = i
       predicted_value = stats::predict(object = model,
-                                       newdata = mean_df)
+                                       newdata = mean_df,
+                                       allow.new.levels = TRUE)
       in_loop_df = data.frame(x = i, y = predicted_value)
       plot_df = rbind(plot_df,in_loop_df)
     }
