@@ -7,7 +7,8 @@
 #' @param predict_var3_name predictor 3 name
 #'
 #' @return vector of var name
-#'
+#' @export
+
 label_name = function(graph_label_name,
                       response_var_name,
                       predict_var1_name,

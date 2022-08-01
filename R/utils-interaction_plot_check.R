@@ -4,6 +4,7 @@
 #'
 #' @return nothing
 #' @keywords internal
+#' @export
 #'
 interaction_plot_check <- function(interaction_term) {
   if (length(interaction_term) > 1) {
