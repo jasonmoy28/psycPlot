@@ -28,8 +28,6 @@ two_way_interaction_plot <- function(model,
                                      cateogrical_var = NULL,
                                      y_lim = NULL,
                                      plot_color = FALSE) {
-  # warning functions of more than two interaction
-
   model_data <- NULL
   if (any(class(model) %in% c("lmerMod", "lmerModLmerTest", "lm", "lme"))) {
     model_data <- insight::get_data(model)
@@ -56,7 +54,7 @@ two_way_interaction_plot <- function(model,
       .$conditional
 
     interaction_term <- interaction_plot_check(interaction_term)
-    warning("Only models from lm, nlme, lme4, and lmerTest are tested")
+    warning("Only models from lm, nlme, lme4, and lmerTest are ")
   }
 
   # get variable from model
@@ -79,26 +77,35 @@ two_way_interaction_plot <- function(model,
     }
   }
 
-  data <- data_check(data)
-  mean_df <- dplyr::summarise_all(data, mean, na.rm = TRUE)
-  upper_df <- dplyr::summarise_all(
-    data,
-    .funs = function(.) {
-      mean(., na.rm = TRUE) + 1 * stats::sd(., na.rm = TRUE)
-    }
-  )
-  lower_df <- dplyr::summarise_all(
-    data,
-    .funs = function(.) {
-      mean(., na.rm = TRUE) - 1 * stats::sd(., na.rm = TRUE)
-    }
-  )
+  mean_df = get_predict_df(data = model_data)$mean_df
+  upper_df = get_predict_df(data = model_data)$upper_df
+  lower_df = get_predict_df(data = model_data)$lower_df
 
   # Specify the categorical variable upper and lower bound directly
-  if (!is.null(cateogrical_var)) {
-    for (name in names(cateogrical_var)) {
-      upper_df[name] <- cateogrical_var[[name]][1]
-      lower_df[name] <- cateogrical_var[[name]][2]
+  predict_vars = c(predict_var1,predict_var2)
+  data_type = data %>%
+    dplyr::summarise(dplyr::across(!!!enquos(predict_vars), class)) %>%
+    tidyr::pivot_longer(dplyr::everything(),names_to = 'name',values_to = 'value')
+
+  if (any(data_type == 'factor')) {
+    cateogrical_var = data_type %>% filter(value == 'factor') %>% dplyr::select(name) %>% dplyr::pull()
+    for (name in cateogrical_var) {
+      if (length(levels((data[[name]]))) > 2) {
+        stop('Error: Categorical variable must only have 2 levels')
+      }
+      upper_df[name] <- levels((data[[name]]))[1]
+      lower_df[name] <- levels((data[[name]]))[2]
+    }
+    if (cateogrical_var %in% predict_var1) {
+      var1_category = c(levels((data[[name]]))[1],levels((data[[name]]))[1],levels((data[[name]]))[2],levels((data[[name]]))[2])
+    } else{
+      var1_category = factor(c("High", "High", "Low", "Low"), levels = c("Low", "High"))
+    }
+
+    if(cateogrical_var %in% predict_var2){
+      var2_category = c(levels((data[[name]]))[1],levels((data[[name]]))[2],levels((data[[name]]))[1],levels((data[[name]]))[2])
+    } else{
+      var2_category = c("High", "Low", "High", "Low")
     }
   }
 
@@ -149,52 +156,35 @@ two_way_interaction_plot <- function(model,
       stats::predict(model, newdata = lower_lower_df)
   }
 
-  final_df <- data.frame(
+  plot_df <- data.frame(
     value = c(
       upper_upper_predicted_value,
       upper_lower_predicted_value,
       lower_upper_predicted_value,
       lower_lower_predicted_value
     ),
-    var1_category = factor(c("High", "High", "Low", "Low"), levels = c("Low", "High")),
-    var2_category = c("High", "Low", "High", "Low")
+    var1_category = var1_category,
+    var2_category = var2_category
   )
 
-  # Get the correct label for the plot
-  if (!is.null(graph_label_name)) {
-    # If a vector of string is passed as argument, slice the vector
-    if (class(graph_label_name) == "character") {
-      response_var_plot_label <- graph_label_name[1]
-      predict_var1_plot_label <- graph_label_name[2]
-      predict_var2_plot_label <- graph_label_name[3]
-      # if a function of switch_case is passed as an argument, use the function
-    } else if (class(graph_label_name) == "function") {
-      response_var_plot_label <- graph_label_name(response_var)
-      predict_var1_plot_label <- graph_label_name(predict_var1)
-      predict_var2_plot_label <- graph_label_name(predict_var2)
-      # All other case use the original label
-    } else {
-      response_var_plot_label <- response_var
-      predict_var1_plot_label <- predict_var1
-      predict_var2_plot_label <- predict_var2
-    }
-    # All other case use the original label
-  } else {
-    response_var_plot_label <- response_var
-    predict_var1_plot_label <- predict_var1
-    predict_var2_plot_label <- predict_var2
-  }
 
+  # Get the correct label for the plot
+  label_name = label_name(
+    graph_label_name = graph_label_name,
+    response_var_name = response_var,
+    predict_var1_name = predict_var1,
+    predict_var2_name = predict_var2,
+    predict_var3_name = NULL
+  )
 
   if (is.null(y_lim)) {
-    y_lim <-
-      c(floor(min(final_df$value)) - 0.5, ceiling(max(final_df$value)) + 0.5)
+    y_lim <- c(floor(min(plot_df$value)) - 0.5, ceiling(max(plot_df$value)) + 0.5)
   }
 
   if (plot_color) {
     plot <-
       ggplot2::ggplot(
-        final_df,
+        plot_df,
         ggplot2::aes(
           y = .data$value,
           x = .data$var1_category,
@@ -203,9 +193,9 @@ two_way_interaction_plot <- function(model,
       ) +
       ggplot2::geom_point() +
       ggplot2::geom_line(ggplot2::aes(group = .data$var2_category)) +
-      ggplot2::labs(y = response_var_plot_label,
-                    x = predict_var1_plot_label,
-                    color = predict_var2_plot_label) +
+      ggplot2::labs(y = label_name[1],
+                    x = label_name[2],
+                    color = label_name[3]) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
         panel.grid.major = ggplot2::element_blank(),
@@ -217,7 +207,7 @@ two_way_interaction_plot <- function(model,
   } else {
     plot <-
       ggplot2::ggplot(
-        final_df,
+        plot_df,
         ggplot2::aes(
           y = .data$value,
           x = .data$var1_category,
@@ -226,9 +216,9 @@ two_way_interaction_plot <- function(model,
       ) +
       ggplot2::geom_point() +
       ggplot2::geom_line(ggplot2::aes(linetype = .data$var2_category)) +
-      ggplot2::labs(y = response_var_plot_label,
-                    x = predict_var1_plot_label,
-                    linetype = predict_var2_plot_label) +
+      ggplot2::labs(y = label_name[1],
+                    x = label_name[2],
+                    linetype = label_name[3]) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
         panel.grid.major = ggplot2::element_blank(),
