@@ -154,6 +154,15 @@ two_way_interaction_plot <- function(model,
       stats::predict(model, newdata = lower_upper_df)
     lower_lower_predicted_value <-
       stats::predict(model, newdata = lower_lower_df)
+  } else{
+    upper_upper_predicted_value <-
+      stats::predict(model, newdata = upper_upper_df)
+    upper_lower_predicted_value <-
+      stats::predict(model, newdata = upper_lower_df)
+    lower_upper_predicted_value <-
+      stats::predict(model, newdata = lower_upper_df)
+    lower_lower_predicted_value <-
+      stats::predict(model, newdata = lower_lower_df)
   }
 
   plot_df <- data.frame(
